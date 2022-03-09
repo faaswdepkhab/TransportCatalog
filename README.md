@@ -25,6 +25,6 @@ Windows:
     cd build
     cmake.exe ..
     mingw32-make.exe
-    (here, as an example, the utility make, which is part of the mingw package, is used)
+(here, as an example, the utility make, which is part of the mingw package, is used)
 
 If there are no errors, the *TransportCatalog.exe* executable file will appear in the current folder for *Windows*, or *TransportCatalog* for *Linux*
