@@ -11,6 +11,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include <transport_router.pb.h>
 
 namespace graph {
 
@@ -28,6 +29,11 @@ public:
     };
 
     std::optional<RouteInfo> BuildRoute(VertexId from, VertexId to) const;
+    
+    
+    void Serialize(transport_router_serialize::TransportRouter &serialData) const;
+    void Deserialize(const transport_router_serialize::TransportRouter &serialData);
+    
 
 private:
     struct RouteInternalData {
@@ -74,7 +80,7 @@ private:
             }
         }
     }
-
+    
     static constexpr Weight ZERO_WEIGHT{};
     const Graph& graph_;
     RoutesInternalData routes_internal_data_;
@@ -114,4 +120,51 @@ std::optional<typename Router<Weight>::RouteInfo> Router<Weight>::BuildRoute(Ver
     return RouteInfo{weight, std::move(edges)};
 }
 
+    
+template<>    
+inline void Router<double>::Serialize(transport_router_serialize::TransportRouter &serialData) const {
+    for (auto &row:routes_internal_data_) {
+        transport_router_serialize::RouteDataRow row_proto;
+        for (auto item:row) {
+            transport_router_serialize::RouteOptionalData item_proto;
+            if (item != std::nullopt) {
+                transport_router_serialize::RouteInternalData internal_proto;
+                internal_proto.set_weight(item->weight);
+                if (item->prev_edge != std::nullopt) {
+                    internal_proto.set_prev_edge(item->prev_edge.value());
+                }
+                *item_proto.mutable_data_value() = internal_proto;
+            }
+            *row_proto.add_row() = item_proto;
+        }
+        *serialData.add_router_data() = row_proto;
+    }
+    
+}
+    
+template<>    
+inline void Router<double>::Deserialize(const transport_router_serialize::TransportRouter &serialData) {
+    routes_internal_data_.clear();
+    
+    for (int i = 0; i < serialData.router_data_size(); i++) {
+        std::vector<std::optional<RouteInternalData>> row;
+        for (int j = 0; j < serialData.router_data(i).row_size(); j++) {
+            if (serialData.router_data(i).row(j).data_case() == transport_router_serialize::RouteOptionalData::DataCase::kDataValue) {
+                RouteInternalData value;
+                
+                value.weight = serialData.router_data(i).row(j).data_value().weight();
+                if (serialData.router_data(i).row(j).data_value().data_case() == transport_router_serialize::RouteInternalData::DataCase::kPrevEdge) {
+                    value.prev_edge = serialData.router_data(i).row(j).data_value().prev_edge();
+                }
+                
+                row.push_back(value);
+            } else {
+                row.push_back(std::nullopt);
+            }
+        }
+        routes_internal_data_.push_back(row);
+    }
+}
+    
+    
 }  // namespace graph

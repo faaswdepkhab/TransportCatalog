@@ -29,6 +29,8 @@ public:
     json::Document GetResultQuery();
     void SetRenderSettings(TransportCatalogeHandler &catalogue_handler) const;
     void SetRouterSettings(TransportCatalogeHandler &catalogue_handler) const;
+    void SaveToFile(TransportCatalogeHandler &catalogue_handler) const;
+    void LoadFromFile(TransportCatalogeHandler &catalogue_handler) const;
 
 protected: 
     domain::InputData ReadInputQuery() override;

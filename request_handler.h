@@ -8,16 +8,24 @@
 #include "map_renderer.h"
 #include "transport_catalogue.h"
 #include "transport_router.h"
+#include "serialization.h"
 #include "json.h"
 
 class TransportCatalogeHandler {
 public:
     TransportCatalogeHandler(transport_cataloge::TransportCatalogue &db
-        , renderer::TransportCatalogeRendererSVG &renderer, TransportRouter &router): db_(db), renderer_(renderer), router_(router) {}
+        , renderer::TransportCatalogeRendererSVG &renderer, TransportRouter &router, serialization::TransportCatalogSerialization &serializator): 
+        db_(db), 
+        renderer_(renderer), 
+        router_(router),
+        serializator_(serializator) 
+        {}
 
     std::string RenderMap() const;
     void SetRenderSettings(renderer::RenderSettings settings);
     void SetRouterSettings(double bus_velocity, int bus_wait_time);
+    void SaveToFile(const std::string fileName);
+    void LoadFromFile(const std::string fileName);
     
     void AddStop(domain::RoutesStop &s);
     void AddBus(domain::BusRoute &b);
@@ -31,4 +39,5 @@ private:
     transport_cataloge::TransportCatalogue& db_;
     renderer::TransportCatalogeRendererSVG &renderer_;
     TransportRouter &router_;
+    serialization::TransportCatalogSerialization serializator_;
 };

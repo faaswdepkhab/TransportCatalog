@@ -192,7 +192,25 @@ void JsonReader::SetRouterSettings(TransportCatalogeHandler &catalogue_handler) 
     double bus_velocity = dict.at("bus_velocity"s).AsDouble();
     
     catalogue_handler.SetRouterSettings(bus_velocity, bus_wait_time);
+}
+    
+void JsonReader::SaveToFile(TransportCatalogeHandler &catalogue_handler) const {
+    if (doc_.GetRoot().AsDict().count("serialization_settings"s) == 0) {
+        return;
+    }
+    
+    auto dict = doc_.GetRoot().AsDict().at("serialization_settings"s).AsDict();
+    catalogue_handler.SaveToFile(dict.at("file"s).AsString());
 }    
+ 
+void JsonReader::LoadFromFile(TransportCatalogeHandler &catalogue_handler) const {
+    if (doc_.GetRoot().AsDict().count("serialization_settings"s) == 0) {
+        return;
+    }
+    
+    auto dict = doc_.GetRoot().AsDict().at("serialization_settings"s).AsDict();
+    catalogue_handler.LoadFromFile(dict.at("file"s).AsString());
+}
     
 void JsonReader::SetRenderSettings(TransportCatalogeHandler &catalogue_handler) const {
     if (doc_.GetRoot().AsDict().count("render_settings"s) == 0) {

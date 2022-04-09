@@ -212,5 +212,9 @@ int TransportCatalogue::GetCountBuses() const {
 int TransportCatalogue::GetCountStops() const {
     return fStops.size();
 }
+
+const TransportCatalogue::DistancesInfo& TransportCatalogue::GetAllDistances() const {
+    return Distances;
+}    
     
 } // конец namespace transport_cataloge    

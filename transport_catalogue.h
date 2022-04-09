@@ -15,8 +15,8 @@
 namespace transport_cataloge {
 
 class TransportCatalogue {
-
 public:
+    using DistancesInfo = std::unordered_map<std::string_view, std::unordered_map<std::string_view, int>>;
     
     TransportCatalogue() {}
     
@@ -30,6 +30,8 @@ public:
     const domain::Bus* FindBus(std::string_view Number) const;
     
     const domain::Stop* FindStop(std::string_view Name) const;
+    
+    const DistancesInfo& GetAllDistances() const;
     
     void AddDistance(std::string_view src, std::string_view dest, int distance);
     
@@ -65,8 +67,7 @@ private:
     std::unordered_map<std::string_view, std::vector<int>> Routes;
     
     // граф рассояний
-    std::unordered_map<std::string_view, 
-        std::unordered_map<std::string_view, int>> Distances;    
+    DistancesInfo Distances;    
     
     // получение расстояния от src до dest (фиксированное направление)
     bool GetRawDistance(std::string_view src, std::string_view dest, int &result) const;

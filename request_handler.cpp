@@ -36,3 +36,11 @@ void TransportCatalogeHandler::SetRouterSettings(double bus_velocity, int bus_wa
 json::Dict TransportCatalogeHandler::GetRoute(std::string from, std::string to) {
     return router_.GetRoute(from , to);
 }
+
+void TransportCatalogeHandler::SaveToFile(const std::string fileName) {
+    serializator_.SaveToFile(fileName, db_, renderer_, router_);
+}
+
+void TransportCatalogeHandler::LoadFromFile(const std::string fileName) {
+    serializator_.LoadFromFile(fileName, db_, renderer_, router_);
+}

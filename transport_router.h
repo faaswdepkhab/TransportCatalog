@@ -6,6 +6,7 @@
 #include <memory>
 #include <functional>
 #include <string_view>
+#include <transport_router.pb.h>
 
 #include "domain.h"
 #include "transport_catalogue.h"
@@ -17,34 +18,31 @@ const double KmH_To_MMin = 1000.0 / 60;
 
 class TransportRouter {
 public:
+    
     struct EdgeInfo {
-        std::string_view BusNumber;
+        size_t IdBus;
         int StopsCount;
-        double weight;
-        
-        bool operator <(const EdgeInfo &other) const {
-            return weight < other.weight;
-        }
-        
-        bool operator >(const EdgeInfo &other) const {
-            return weight > other.weight;
-        }
-        
-        friend EdgeInfo operator+(const EdgeInfo &ls, const EdgeInfo &rs);
     };
     
     TransportRouter(transport_cataloge::TransportCatalogue &newTransportCatalogue): transportCatalogue(newTransportCatalogue) {}
+    
     void BuildRouter(double bus_velocity ,int bus_wait_time);
+    
     json::Dict GetRoute(std::string from, std::string to);
+    
+    void Serialize(transport_router_serialize::TransportRouter &serialData) const;
+    
+    void Deserialize(const transport_router_serialize::TransportRouter &serialData);
+    
 private:
     // траспортный каталог
     transport_cataloge::TransportCatalogue &transportCatalogue;
     
     // маршрутизатор
-    std::unique_ptr<graph::Router<EdgeInfo>> router;
+    std::unique_ptr<graph::Router<double>> router;
     
     // граф для маршрутизатора
-    std::unique_ptr<graph::DirectedWeightedGraph<EdgeInfo>> graph;
+    std::unique_ptr<graph::DirectedWeightedGraph<double>> graph;
     
     // скорость автобуса (м/мин)
     double busVelocity;
@@ -62,10 +60,10 @@ private:
     std::map<std::string_view, size_t, std::less<>> indexStops;
     
     // индексы маршрутов
-    //std::map<std::string_view, size_t, std::less<>> indexBuses;
+    std::map<std::string_view, size_t, std::less<>> indexBuses;
     
     // список информации о рёбрах
-    //std::vector<EdgeInfo> listEdges;
+    std::vector<EdgeInfo> listEdges;
 
     // добавление участка пути
     void AddEdge(std::string_view busNumber, int firstStopId, int secondStopId, double distance, int stopCount);
@@ -87,9 +85,25 @@ private:
     // построение статуса "wait" для результата
     json::Dict BuildBusStatus(std::string_view busNumber, int stopCount, double time);
     
-};
+    // сериализация графа
+    void SerializeGraph(transport_router_serialize::TransportRouter &serialData) const;
+    
+    // десериализация графа
+    void DeserializeGraph(const transport_router_serialize::TransportRouter &serialData);
+    
+    // сериализация списка рёбер
+    void SerializeListEdges(transport_router_serialize::TransportRouter &serialData) const;
+    
+    // десериализация списка рёбер
+    void DeserializeListEdges(const transport_router_serialize::TransportRouter &serialData);
 
-inline TransportRouter::EdgeInfo operator+(const TransportRouter::EdgeInfo &ls, const TransportRouter::EdgeInfo &rs) {
-    double weight = ls.weight + rs.weight;
-    return {ls.BusNumber, ls.StopsCount, weight};
-}
+// сериализация настроек маршрутизатора
+    void SerializeRoutersSettings(transport_router_serialize::TransportRouter &serialData) const;
+    
+    // десериализация настроек маршрутизатора
+    void DeserializeRoutersSettings(const transport_router_serialize::TransportRouter &serialData);
+    
+    // начальные действия при десериализации
+    void InitDeserialize();
+    
+};

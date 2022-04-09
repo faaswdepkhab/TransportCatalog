@@ -185,6 +185,9 @@ string TransportCatalogeRendererSVG::GetSVGResultAsString() {
     doc_.Render(strm);
     string result = strm.str();
     return result;
+}
+
+const RenderSettings& TransportCatalogeRendererSVG::GetRenderSettings() const {
+    return settings_;
 }    
-    
 }  // namespace renderer  

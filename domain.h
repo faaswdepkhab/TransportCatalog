@@ -67,6 +67,4 @@ using  QueryLinesVector = std::vector<QueryLine>;
 */
 
 }     // namespace domain 
-
- 
-        
+      

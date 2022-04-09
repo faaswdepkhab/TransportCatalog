@@ -1,7 +1,8 @@
 #include <utility>
 #include <string>
-#include "json_builder.h"
+#include <graph.pb.h>
 
+#include "json_builder.h"
 #include "transport_router.h"
 
 
@@ -15,30 +16,39 @@ namespace {
 }
 
 void TransportRouter::BuildRouter(double bus_velocity ,int bus_wait_time) {
-    graph = std::move(make_unique<graph::DirectedWeightedGraph<EdgeInfo>>(transportCatalogue.GetCountStops()));
+    graph = std::move(make_unique<graph::DirectedWeightedGraph<double>>(transportCatalogue.GetCountStops()));
     busVelocity = bus_velocity * KmH_To_MMin;
     busWaitTime = bus_wait_time;
     ScanTransportCatalogue();
-    router = std::move(make_unique<graph::Router<EdgeInfo>>(*graph));
+    router = std::move(make_unique<graph::Router<double>>(*graph));
 }
 
 void TransportRouter::BuildIndexes() {
+    indexStops.clear();
     for (size_t i = 0; i < stops.size(); i++) {
         indexStops[stops[i].Name] = i;
+    }
+    
+    indexBuses.clear();
+    for (size_t i = 0; i < buses.size(); i++) {
+        indexBuses[buses[i].Number] = i;
     }
 }
 
 void TransportRouter::AddEdge(std::string_view busNumber, int firstStopId,  int secondStopId, double distance, int stopCount) {
     double weight = distance / busVelocity;
     weight += busWaitTime;
-    EdgeInfo edgeInfo = {busNumber, stopCount, weight};
-    graph::Edge<EdgeInfo> edge = {static_cast<size_t>(firstStopId), static_cast<size_t>(secondStopId), edgeInfo};
+    
+    graph::Edge<double> edge = {static_cast<size_t>(firstStopId), static_cast<size_t>(secondStopId), weight};
     graph->AddEdge(edge);
+    
+    listEdges.push_back({indexBuses[busNumber], stopCount});
 }
 
 void TransportRouter::ScanTransportCatalogue() {
     buses = std::move(transportCatalogue.GetListAllBuses());
     stops = std::move(transportCatalogue.GetListAllStops());
+    listEdges.clear();
     BuildIndexes();
     
     for (auto &bus:buses) {
@@ -95,12 +105,12 @@ json::Dict TransportRouter::GetRoute(std::string from, std::string to) {
     for (auto egdeId:tmp_result.value().edges) {
         auto edge_graph = graph->GetEdge(egdeId);
         result_items.push_back(BuildWaitStatus(stops[static_cast<int>(edge_graph.from)].Name));
-        result_items.push_back(BuildBusStatus(edge_graph.weight.BusNumber, edge_graph.weight.StopsCount,  edge_graph.weight.weight));
+        result_items.push_back(BuildBusStatus(buses[listEdges[egdeId].IdBus].Number, listEdges[egdeId].StopsCount,  edge_graph.weight));
     }
     
     return json::Builder{}
                 .StartDict()
-                    .Key("total_time").Value(tmp_result.value().weight.weight)
+                    .Key("total_time").Value(tmp_result.value().weight)
                     .Key("items").Value(result_items)
                 .EndDict().Build().AsDict();
 }
@@ -122,4 +132,84 @@ json::Dict TransportRouter::BuildBusStatus(std::string_view busNumber, int stopC
                     .Key("span_count").Value(stopCount)
                     .Key("time").Value(time - busWaitTime)
                 .EndDict().Build().AsDict();
+}
+
+void TransportRouter::SerializeGraph(transport_router_serialize::TransportRouter &serialData) const {
+    size_t count = graph->GetEdgeCount();
+    for (size_t i = 0; i < count; i++) {
+        auto edge = graph->GetEdge(i);
+        graph_serialize::Edge edge_proto;
+        edge_proto.set_from(edge.from);
+        edge_proto.set_to(edge.to);
+        edge_proto.set_weight(edge.weight);
+        *serialData.mutable_graph()->add_list_edges() = edge_proto;
+    }
+}
+    
+void TransportRouter::DeserializeGraph(const transport_router_serialize::TransportRouter &serialData) {
+    graph->Reset();
+    graph->SetVertexCount(transportCatalogue.GetCountStops());
+    int count = serialData.graph().list_edges_size();
+    for (int i = 0; i < count; i++) {
+        graph::Edge<double> edge;
+        edge.from = serialData.graph().list_edges(i).from();
+        edge.to = serialData.graph().list_edges(i).to();
+        edge.weight = serialData.graph().list_edges(i).weight();
+        graph->AddEdge(edge);
+    }
+}
+
+void TransportRouter::SerializeListEdges(transport_router_serialize::TransportRouter &serialData) const {
+    for (auto &edge:listEdges) {
+        transport_router_serialize::EdgeInfo edge_proto;
+        edge_proto.set_id_bus(edge.IdBus);
+        edge_proto.set_stops_count(edge.StopsCount);
+        *serialData.add_list_edges() = edge_proto;
+    }
+}
+    
+void TransportRouter::DeserializeListEdges(const transport_router_serialize::TransportRouter &serialData) {
+    int count = serialData.list_edges_size();
+    listEdges.clear();
+    for (int i = 0; i < count; i++) {
+        EdgeInfo edge;
+        edge.IdBus = serialData.list_edges(i).id_bus();
+        edge.StopsCount = serialData.list_edges(i).stops_count();
+        listEdges.push_back(edge);
+    }
+}
+
+void TransportRouter::SerializeRoutersSettings(transport_router_serialize::TransportRouter &serialData) const {
+    serialData.set_bus_velocity(busVelocity);
+    serialData.set_bus_wait_time(busWaitTime);
+}
+    
+void TransportRouter::DeserializeRoutersSettings(const transport_router_serialize::TransportRouter &serialData) {
+    busVelocity = serialData.bus_velocity();
+    busWaitTime = serialData.bus_wait_time();
+}
+
+void TransportRouter::InitDeserialize() {
+    graph = std::move(make_unique<graph::DirectedWeightedGraph<double>>());
+    router = std::move(make_unique<graph::Router<double>>(*graph));
+    
+    buses = std::move(transportCatalogue.GetListAllBuses());
+    stops = std::move(transportCatalogue.GetListAllStops());
+    listEdges.clear();
+    BuildIndexes();
+}
+
+void TransportRouter::Serialize(transport_router_serialize::TransportRouter &serialData) const {
+    SerializeRoutersSettings(serialData);
+    SerializeListEdges(serialData);
+    SerializeGraph(serialData);
+    router->Serialize(serialData);
+}
+    
+void TransportRouter::Deserialize(const transport_router_serialize::TransportRouter &serialData) {
+    InitDeserialize();
+    DeserializeRoutersSettings(serialData);
+    DeserializeListEdges(serialData);
+    DeserializeGraph(serialData);
+    router->Deserialize(serialData);
 }

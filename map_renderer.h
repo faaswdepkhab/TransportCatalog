@@ -105,6 +105,7 @@ public:
     TransportCatalogeRendererSVG(const transport_cataloge::TransportCatalogue &cataloge):db_(cataloge) {}
 
     void SetRenderSettings(RenderSettings settings);
+    const RenderSettings& GetRenderSettings() const;
     std::string GetSVGResultAsString();
     
 protected:

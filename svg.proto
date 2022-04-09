@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package svg_serialize;
+
+message Point {
+    double x = 1;
+    double y = 2;
+}
